@@ -14,9 +14,14 @@ library(plotly)
 library(tidyverse)
 library("RSocrata")
 
-county_data <- st_read('shp_data/county_data.shp')
-colnames(county_data) <- c("area_name", "year", "month", "unemployment_rate", "geometry")
+boundaries <- st_read(
+    "CA_Counties/CA_Counties_TIGER2016.shp") %>% 
+    mutate(area_name = as.character(NAMELSAD)) %>% select(area_name, geometry)
 
+unemployment_db <- dbConnect(RSQLite::SQLite(), dbname = "CA_unemployment.sqlite")
+
+county_data <- unemployment_db %>% tbl("unemployment") %>% collect() %>% 
+    left_join(boundaries, by="area_name")
 
 ui <- fluidPage(
     
