@@ -13,6 +13,8 @@ library(colormap)
 library(plotly)
 library(tidyverse)
 library("RSocrata")
+library(DBI)
+library(RSQLite)
 
 boundaries <- st_read(
     "CA_Counties/CA_Counties_TIGER2016.shp") %>% 
@@ -20,8 +22,8 @@ boundaries <- st_read(
 
 unemployment_db <- dbConnect(RSQLite::SQLite(), dbname = "CA_unemployment.sqlite")
 
-county_data <- unemployment_db %>% tbl("unemployment") %>% collect() %>% 
-    left_join(boundaries, by="area_name")
+county_data <- st_transform(st_as_sf(unemployment_db %>% tbl("unemployment") %>% collect() %>% 
+    left_join(boundaries, by="area_name")), 4326)
 
 ui <- fluidPage(
     
@@ -84,7 +86,7 @@ server <- function(input, output){
     county_grp_month <- reactive({
         as.data.frame(county_data %>% 
             dplyr::filter(area_name == input$county) %>% 
-            dplyr::filter(year %in% c("2016","2017","2018","2019","2020"))  %>%
+            dplyr::filter(year > 2015)  %>%
             group_by(year, month) %>%
             summarize(unemployment_percent = as.numeric(unemployment_rate)*100))
     })
