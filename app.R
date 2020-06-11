@@ -17,12 +17,19 @@ library(DBI)
 library(RSQLite)
 
 boundaries <- st_read(
-    "CA_Counties/CA_Counties_TIGER2016.shp") %>% 
-    mutate(area_name = as.character(NAMELSAD)) %>% select(area_name, geometry)
+    "county_20m/cb_2018_us_county_20m.shp") %>% filter(STATEFP=='06') %>%
+    mutate(area_name = paste(as.character(NAME), 'County')) %>% select(area_name, geometry)
 
-unemployment_db <- dbConnect(RSQLite::SQLite(), dbname = "CA_unemployment.sqlite")
+unemployment <- read.socrata(
+    "https://data.edd.ca.gov/resource/e6gw-gvii.json?area_type=County",
+    app_token = "akoVDHlvIapmiBIkJ8peAwNUp",
+    email     = "lcordano@ucdavis.edu",
+    password  = "LC72lc09!") %>% 
+    filter(seasonally_adjusted_y_n == "N") %>% 
+    mutate(year = as.numeric(year)) %>% filter(year > 1999) %>%
+    select(area_name, year, month, unemployment, unemployment_rate)
 
-county_data <- st_transform(st_as_sf(unemployment_db %>% tbl("unemployment") %>% collect() %>% 
+county_data <- st_transform(st_as_sf(unemployment %>% 
     left_join(boundaries, by="area_name")), 4326)
 
 ui <- fluidPage(
